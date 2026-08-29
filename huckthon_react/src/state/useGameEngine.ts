@@ -26,16 +26,25 @@ export function useGameEngine() {
   // ---------------- facing direction (compass heading) ----------------
   const [heading, setHeading] = useState<number | null>(null);
   const headingWatchStarted = useRef(false);
+  // Once a true compass reading (iOS's webkitCompassHeading, or a "deviceorientationabsolute"
+  // event) has arrived, ignore plain relative "deviceorientation" events so they can't override
+  // it with a heading that's only relative to wherever the phone happened to be pointed at
+  // page-load. Until then, relative events are used as a best-effort fallback.
+  const gotReliableHeadingRef = useRef(false);
 
   const handleOrientation = useCallback((e: DeviceOrientationEvent) => {
     const webkitHeading = (e as DeviceOrientationEvent & { webkitCompassHeading?: number }).webkitCompassHeading;
     if (typeof webkitHeading === 'number') {
-      // iOS Safari: already a 0-360 compass heading (0 = north, clockwise).
+      gotReliableHeadingRef.current = true;
       setHeading(webkitHeading);
-    } else if (typeof e.alpha === 'number') {
-      // Standard DeviceOrientation alpha increases counter-clockwise from north; flip it to a compass heading.
-      setHeading((360 - e.alpha) % 360);
+      return;
     }
+    if (typeof e.alpha !== 'number') return;
+    const isAbsolute = e.type === 'deviceorientationabsolute' || (e as DeviceOrientationEvent & { absolute?: boolean }).absolute === true;
+    if (!isAbsolute && gotReliableHeadingRef.current) return;
+    if (isAbsolute) gotReliableHeadingRef.current = true;
+    // Standard DeviceOrientation alpha increases counter-clockwise from north; flip it to a compass heading.
+    setHeading((360 - e.alpha) % 360);
   }, []);
 
   // Starts listening for the device's compass heading. Must be called from a user-gesture handler
@@ -43,13 +52,12 @@ export function useGameEngine() {
   const startHeadingWatch = useCallback(() => {
     if (headingWatchStarted.current || typeof window === 'undefined' || typeof DeviceOrientationEvent === 'undefined') return;
     headingWatchStarted.current = true;
-    const win = window as unknown as { ondeviceorientationabsolute?: unknown };
     const attach = () => {
-      if ('ondeviceorientationabsolute' in win) {
-        window.addEventListener('deviceorientationabsolute', handleOrientation as EventListener);
-      } else {
-        window.addEventListener('deviceorientation', handleOrientation);
-      }
+      // Attach both event types rather than feature-detecting which one to use: on a number of
+      // Android/Chrome versions "ondeviceorientationabsolute" tests as supported but the event
+      // never actually fires (or vice versa), which was silently leaving the arrow unshown.
+      window.addEventListener('deviceorientationabsolute', handleOrientation as EventListener);
+      window.addEventListener('deviceorientation', handleOrientation);
     };
     const DOE = DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<'granted' | 'denied'> };
     if (typeof DOE.requestPermission === 'function') {
