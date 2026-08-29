@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Destination, HistoryEntry, LatLng, QuizResult, Room, RouteResult, ScreenId, Stop } from '../lib/types';
 import * as api from '../lib/api';
 import type { GeocodeSearchResult } from '../lib/api';
-import * as rt from '../lib/socket';
+import * as rt from '../lib/rooms';
 import { getOrCreatePlayerId, saveHistoryEntry, saveRecentRoom, compressImageDataUrl } from '../lib/storage';
 import { haversine, scoreForDistance, simulateDistance } from '../lib/geo';
 
@@ -259,14 +259,14 @@ export function useGameEngine() {
   );
 
   const leaveGroup = useCallback(() => {
-    if (roomCode) rt.leaveRoomSocket(roomCode, playerId);
+    if (roomCode) rt.leaveRoomSocket();
     setRoomCode(null);
     setRoom(null);
     setIsHost(false);
     setGroupMode(false);
     groupQuizStartedRef.current = false;
     groupRevealStartedRef.current = false;
-  }, [roomCode, playerId]);
+  }, [roomCode]);
 
   // ---------------- quiz flow ----------------
   const initQuizFromStops = useCallback(
@@ -391,16 +391,18 @@ export function useGameEngine() {
 
       if (groupMode && roomCode) {
         const totalScore = nextResults.reduce((s, r) => s + r.score, 0);
-        void totalScore; // server recomputes the total from history; kept for clarity
         const thumb = (await compressImageDataUrl(dataUrl, 360, 0.65)) || dataUrl;
         rt
-          .submitAnswerToRoom(roomCode, playerId, {
+          .submitAnswerToRoom(roomCode, playerId, playerName, {
             stopIdx: idx,
             score,
             distance,
             stopName: lm.name,
             userImgThumb: thumb,
             targetImg: lm.liveImg,
+            totalScore,
+            answeredCount: nextResults.length,
+            finished: nextResults.length >= stopsCount,
           })
           .catch(() => {});
         saveHistoryEntry({

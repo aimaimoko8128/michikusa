@@ -1,6 +1,8 @@
 # みちくさ — backend (Node.js + Express + Socket.IO)
 
-「みちくさ」のバックエンドAPIです。フロントエンド(`../huckthon_react`)から呼び出されます。
+> **注記**: 現在 `../huckthon_react` はデフォルトでこのバックエンドを使わず、完全な静的サイト(APIキー埋め込み + Firebase直接接続)として動作します。このバックエンドは、APIキーをサーバー側に隠したい場合の参考実装として残しています。使う場合は `../huckthon_react/src/lib/api.ts` と `src/lib/rooms.ts` をこちらのAPI/Socket.IO呼び出しに戻してください。
+
+「みちくさ」のバックエンドAPIです(オプション)。使用する場合、フロントエンド(`../huckthon_react`)から呼び出されます。
 
 ## 責務
 
