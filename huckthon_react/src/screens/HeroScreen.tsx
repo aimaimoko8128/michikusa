@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useGame } from '../state/useGame';
 import { SAKURA_IMAGES } from '../lib/sakuraImages';
+import titleImg from '../assets/title.png';
 
 const SAKURA_COUNT = 16;
 
@@ -64,7 +65,9 @@ export function HeroScreen() {
       <div className="hero-content">
         <div className="hero-mark">京都リアルワールド探索ゲーム</div>
         <div className="plaque">
-          <h1 className="hero-title">みちくさ</h1>
+          <h1 className="hero-title">
+            <img src={titleImg} alt="KyotoGuessr" className="hero-title-img" />
+          </h1>
           <p className="hero-tagline">目的地までの道のりを、ゲームにする。</p>
         </div>
         <div className="hero-primary-actions">
@@ -97,7 +100,7 @@ export function HeroScreen() {
           記録
         </button>
       </div>
-      <div className="hero-foot">みちくさ — 着くまでが、ゲーム。</div>
+      <div className="hero-foot">KyotoGuessr — 着くまでが、ゲーム。</div>
     </section>
   );
 }

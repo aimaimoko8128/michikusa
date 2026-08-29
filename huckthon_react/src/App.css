@@ -156,18 +156,16 @@
     max-width:92vw;
   }
   .hero-title{
-    font-family:var(--serif);
-    font-weight:800;
-    font-size:clamp(48px,11vw,92px);
     margin:0;
     line-height:1;
-    letter-spacing:.02em;
-    text-wrap:balance;
-    background: linear-gradient(135deg, #e6942a 0%, #c1321a 55%, #9c2712 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    -webkit-text-fill-color: transparent;
+    display:flex;
+    justify-content:center;
+  }
+  .hero-title-img{
+    display:block;
+    width:min(92vw, 480px);
+    height:auto;
+    filter: drop-shadow(0 3px 10px rgba(80,26,10,0.35));
   }
   .hero-tagline{
     font-family:var(--serif);

@@ -521,8 +521,15 @@ export function useGameEngine() {
           userImg: thumb,
           targetImg: lm.liveImg,
         });
-        setIdx(firstUnansweredIdx());
-        setScreen('quiz');
+        // If this submission just triggered (or raced with the passive listener triggering)
+        // the group reveal, screen is already 'reveal' — don't stomp it back to 'quiz'. That
+        // stomp was the bug: the last player to submit would flash to the reveal screen and then
+        // immediately bounce back to "全員の撮影を待っています…" because this fall-through used to
+        // run unconditionally.
+        if (!groupRevealStartedRef.current) {
+          setIdx(firstUnansweredIdx());
+          setScreen('quiz');
+        }
         return null;
       } else {
         compressImageDataUrl(dataUrl, 360, 0.65).then((thumb) => {
