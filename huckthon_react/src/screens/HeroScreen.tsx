@@ -75,7 +75,6 @@ export function HeroScreen() {
             グループで対戦
           </button>
         </div>
-        <hr className="hero-rule" />
         <div className="hero-steps">
           <div className="hero-step">
             <span className="hero-step-num">1</span>
