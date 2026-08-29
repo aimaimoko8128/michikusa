@@ -138,9 +138,13 @@
   .hero-content{
     position:relative;
     display:flex; flex-direction:column; align-items:center; text-align:center;
-    padding:0 20px 60px;
+    padding:44px 20px 60px;
     flex:1;
-    justify-content:center;
+    /* Was justify-content:center — with the plaque/tagline removed and a taller logo image,
+       vertically centering the whole block left a much bigger, unbalanced gap above the
+       hero-mark label than below the final button. Anchoring to the top (with its own
+       padding-top instead) keeps the gap consistent and modest regardless of content height. */
+    justify-content:flex-start;
   }
   .hero-mark{
     font-family:var(--label);
@@ -150,7 +154,7 @@
     color:#000;
     -webkit-text-stroke: 3px #fff;
     paint-order: stroke fill;
-    margin:34px 0 22px;
+    margin:0 0 22px;
   }
   .hero-title{
     margin:0;
