@@ -83,22 +83,33 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | { __timeou
   return Promise.race([promise, new Promise<{ __timeout: true }>((resolve) => setTimeout(() => resolve({ __timeout: true }), ms))]);
 }
 
-export async function fetchRoute(origin: { lat: number; lng: number }, dest: { lat: number; lng: number }): Promise<RouteResult> {
+interface OsrmResponse {
+  code: string;
+  routes?: { geometry: { coordinates: [number, number][] }; distance: number }[];
+}
+
+async function fetchOsrmRoute(profile: string, origin: { lat: number; lng: number }, dest: { lat: number; lng: number }) {
   const url =
-    `https://router.project-osrm.org/route/v1/foot/${origin.lng},${origin.lat};${dest.lng},${dest.lat}` +
+    `https://router.project-osrm.org/route/v1/${profile}/${origin.lng},${origin.lat};${dest.lng},${dest.lat}` +
     '?overview=full&geometries=geojson';
+  const data = await withTimeout(fetch(url).then((r) => r.json() as Promise<OsrmResponse>), 8000);
+  if (!('__timeout' in data) && data.code === 'Ok' && data.routes && data.routes[0]) {
+    return data.routes[0];
+  }
+  return null;
+}
+
+// Uses OSRM's pedestrian ("foot") routing profile — unlike the driving profile, OSRM's foot.lua
+// only respects an explicit `oneway:foot` tag, not the generic car-oriented `oneway` tag, so a
+// walking route is already allowed down one-way streets in the direction a car couldn't take.
+// If the demo server rejects the "foot" profile name for some reason, we retry once with
+// "walking" (an alias some OSRM mirrors use) before giving up and drawing a straight line.
+export async function fetchRoute(origin: { lat: number; lng: number }, dest: { lat: number; lng: number }): Promise<RouteResult> {
   try {
-    interface OsrmResponse {
-      code: string;
-      routes?: { geometry: { coordinates: [number, number][] }; distance: number }[];
-    }
-    const data = await withTimeout(fetch(url).then((r) => r.json() as Promise<OsrmResponse>), 8000);
-    if (!('__timeout' in data) && data.code === 'Ok' && data.routes && data.routes[0]) {
-      const r = data.routes[0];
-      const coords: [number, number][] = r.geometry.coordinates.map((c) => [c[1], c[0]]);
-      return { coords, distance: r.distance, isReal: true };
-    }
-    throw new Error('no route');
+    const r = (await fetchOsrmRoute('foot', origin, dest)) || (await fetchOsrmRoute('walking', origin, dest));
+    if (!r) throw new Error('no route');
+    const coords: [number, number][] = r.geometry.coordinates.map((c) => [c[1], c[0]]);
+    return { coords, distance: r.distance, isReal: true };
   } catch {
     return {
       coords: [

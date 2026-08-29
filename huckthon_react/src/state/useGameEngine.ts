@@ -5,6 +5,7 @@ import type { GeocodeSearchResult } from '../lib/api';
 import * as rt from '../lib/rooms';
 import { getOrCreatePlayerId, saveHistoryEntry, saveRecentRoom, compressImageDataUrl } from '../lib/storage';
 import { haversine, scoreForDistance, simulateDistance } from '../lib/geo';
+import { generateBlackoutCircles, type BlackoutCircle } from '../lib/blackout';
 
 const DEFAULT_ORIGIN: LatLng = { lat: 34.9858, lng: 135.7588 }; // Kyoto station (fallback "current location")
 const DEFAULT_DEST: Destination = { name: '京都駅', lat: 34.9858, lng: 135.7588 };
@@ -21,6 +22,55 @@ export function useGameEngine() {
   const [userGeo, setUserGeo] = useState<LatLng | null>(null);
   const geoWatchId = useRef<number | null>(null);
   const geoInFlight = useRef(false);
+
+  // ---------------- facing direction (compass heading) ----------------
+  const [heading, setHeading] = useState<number | null>(null);
+  const headingWatchStarted = useRef(false);
+
+  const handleOrientation = useCallback((e: DeviceOrientationEvent) => {
+    const webkitHeading = (e as DeviceOrientationEvent & { webkitCompassHeading?: number }).webkitCompassHeading;
+    if (typeof webkitHeading === 'number') {
+      // iOS Safari: already a 0-360 compass heading (0 = north, clockwise).
+      setHeading(webkitHeading);
+    } else if (typeof e.alpha === 'number') {
+      // Standard DeviceOrientation alpha increases counter-clockwise from north; flip it to a compass heading.
+      setHeading((360 - e.alpha) % 360);
+    }
+  }, []);
+
+  // Starts listening for the device's compass heading. Must be called from a user-gesture handler
+  // on iOS (Safari requires DeviceOrientationEvent.requestPermission() to be triggered by a tap).
+  const startHeadingWatch = useCallback(() => {
+    if (headingWatchStarted.current || typeof window === 'undefined' || typeof DeviceOrientationEvent === 'undefined') return;
+    headingWatchStarted.current = true;
+    const win = window as unknown as { ondeviceorientationabsolute?: unknown };
+    const attach = () => {
+      if ('ondeviceorientationabsolute' in win) {
+        window.addEventListener('deviceorientationabsolute', handleOrientation as EventListener);
+      } else {
+        window.addEventListener('deviceorientation', handleOrientation);
+      }
+    };
+    const DOE = DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<'granted' | 'denied'> };
+    if (typeof DOE.requestPermission === 'function') {
+      DOE.requestPermission()
+        .then((state) => {
+          if (state === 'granted') attach();
+        })
+        .catch(() => {
+          /* permission denied/unavailable — just skip the heading arrow */
+        });
+    } else {
+      attach();
+    }
+  }, [handleOrientation]);
+
+  useEffect(() => {
+    return () => {
+      window.removeEventListener('deviceorientationabsolute', handleOrientation as EventListener);
+      window.removeEventListener('deviceorientation', handleOrientation);
+    };
+  }, [handleOrientation]);
 
   const startGeoWatch = useCallback(() => {
     if (!navigator.geolocation || geoWatchId.current !== null) return;
@@ -41,13 +91,14 @@ export function useGameEngine() {
         geoInFlight.current = false;
         setUserGeo({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         startGeoWatch();
+        startHeadingWatch();
       },
       () => {
         geoInFlight.current = false; // couldn't get a fix — carry on in "experience mode"
       },
       { timeout: 8000 }
     );
-  }, [startGeoWatch]);
+  }, [startGeoWatch, startHeadingWatch]);
 
   const autoRequestGeoOnce = useCallback(() => {
     setUserGeo((cur) => {
@@ -143,6 +194,10 @@ export function useGameEngine() {
   const [loadingText, setLoadingText] = useState('現在地から経路を検索中…');
   const [stops, setStops] = useState<Stop[]>([]);
   const [stopsCount, setStopsCount] = useState(0);
+  // One fixed random circle-blackout layout per stop, generated once when the round starts —
+  // so switching back and forth between photos in group mode no longer reshuffles the black
+  // circles each time (that used to defeat the "peek by switching away and back" protection).
+  const [blackoutByStop, setBlackoutByStop] = useState<BlackoutCircle[][]>([]);
   const [idx, setIdx] = useState(0);
   const [results, setResults] = useState<QuizResult[]>([]);
   const [revealIdx, setRevealIdx] = useState(0);
@@ -174,6 +229,7 @@ export function useGameEngine() {
         if (r.destination) setDestinationState(r.destination);
         setStops(r.stops);
         setStopsCount(r.stops.length);
+        setBlackoutByStop(r.stops.map(() => generateBlackoutCircles()));
         setIdx(0);
         setResults([]);
         setRevealIdx(0);
@@ -222,10 +278,11 @@ export function useGameEngine() {
       setGroupWaitStatus('全員が揃ったら「旅のしたくへ進む」を押してください。');
       setScreen('group-wait');
       startGeoWatch();
+      startHeadingWatch();
     } catch (err) {
       setGroupMenuStatus('ルーム作成に失敗しました: ' + (err instanceof Error ? err.message : String(err)));
     }
-  }, [startGeoWatch, playerId]);
+  }, [startGeoWatch, startHeadingWatch, playerId]);
 
   const joinGroupRoom = useCallback(
     async (name: string, code: string) => {
@@ -251,11 +308,12 @@ export function useGameEngine() {
         setGroupWaitStatus('ホストが目的地と写真を決めるのを待っています…（自動で始まります）');
         setScreen('group-wait');
         startGeoWatch();
+        startHeadingWatch();
       } catch (err) {
         setGroupMenuStatus('参加に失敗しました: ' + (err instanceof Error ? err.message : String(err)));
       }
     },
-    [startGeoWatch, playerId]
+    [startGeoWatch, startHeadingWatch, playerId]
   );
 
   const leaveGroup = useCallback(() => {
@@ -273,6 +331,7 @@ export function useGameEngine() {
     (newStops: Stop[], destForTitle: Destination) => {
       setStops(newStops);
       setStopsCount(newStops.length);
+      setBlackoutByStop(newStops.map(() => generateBlackoutCircles()));
       setIdx(0);
       setResults([]);
       setRevealIdx(0);
@@ -324,7 +383,8 @@ export function useGameEngine() {
   const goToSetup = useCallback(() => {
     setScreen('setup');
     autoRequestGeoOnce();
-  }, [autoRequestGeoOnce]);
+    startHeadingWatch();
+  }, [autoRequestGeoOnce, startHeadingWatch]);
 
   const hostStartTrip = useCallback(() => {
     goToSetup();
@@ -498,6 +558,7 @@ export function useGameEngine() {
     screen,
     setScreen,
     userGeo,
+    heading,
     autoRequestGeoOnce,
     destination,
     destStatus,
@@ -514,6 +575,7 @@ export function useGameEngine() {
     loadingText,
     stops,
     stopsCount,
+    blackoutByStop,
     idx,
     setIdx,
     results,

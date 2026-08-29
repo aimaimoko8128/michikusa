@@ -3,68 +3,15 @@ import { useGame } from '../state/useGame';
 import { RouteMap } from '../components/RouteMap';
 import { absoluteImageUrl } from '../lib/api';
 
-type Circle = { cx: number; cy: number; r: number };
-
-// Greedy circle-packing: samples a grid over the 400x300 viewBox and keeps adding
-// randomly-placed circles until at least ~55% of the sampled grid is covered (or the
-// circle/attempt caps are hit). The result permanently blacks out part of the sample
-// photo in group battles, so it can never be fully revealed by peeking around.
-function generateBlackoutCircles(): Circle[] {
-  const W = 400;
-  const H = 300;
-  const GRID_X = 40;
-  const GRID_Y = 30;
-  const totalPoints = GRID_X * GRID_Y;
-  const covered = new Array<boolean>(totalPoints).fill(false);
-  const circles: Circle[] = [];
-
-  function markCovered(cx: number, cy: number, r: number): number {
-    let count = 0;
-    for (let gy = 0; gy < GRID_Y; gy++) {
-      const py = (gy + 0.5) * (H / GRID_Y);
-      for (let gx = 0; gx < GRID_X; gx++) {
-        const idx = gy * GRID_X + gx;
-        if (covered[idx]) continue;
-        const px = (gx + 0.5) * (W / GRID_X);
-        const dx = px - cx;
-        const dy = py - cy;
-        if (dx * dx + dy * dy <= r * r) {
-          covered[idx] = true;
-          count++;
-        }
-      }
-    }
-    return count;
-  }
-
-  let coveredCount = 0;
-  const targetRatio = 0.55;
-  const maxCircles = 14;
-  let attempts = 0;
-  while (coveredCount / totalPoints < targetRatio && circles.length < maxCircles && attempts < 200) {
-    attempts++;
-    const r = 45 + Math.random() * 70;
-    const cx = Math.random() * W;
-    const cy = Math.random() * H;
-    const gained = markCovered(cx, cy, r);
-    if (gained > 0 || circles.length < 3) {
-      circles.push({ cx, cy, r });
-      coveredCount = covered.reduce((a, b) => a + (b ? 1 : 0), 0);
-    }
-  }
-  return circles;
-}
-
 export function QuizScreen() {
-  const { stops, idx, setIdx, stopsCount, results, isStopAnswered, submitPhoto, groupMode, room, route, routeOrigin, destCoord, userGeo, destination } = useGame();
+  const { stops, idx, setIdx, stopsCount, blackoutByStop, results, isStopAnswered, submitPhoto, groupMode, room, route, routeOrigin, destCoord, userGeo, heading, destination } = useGame();
   const lm = stops[idx];
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [status, setStatus] = useState('');
 
   const veiled = groupMode;
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- `idx` intentionally forces a fresh random layout each time the shown stop changes
-  const blackoutCircles = useMemo(() => (veiled ? generateBlackoutCircles() : []), [veiled, idx]);
+  const blackoutCircles = useMemo(() => blackoutByStop[idx] || [], [blackoutByStop, idx]);
 
   useEffect(() => {
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -142,7 +89,7 @@ export function QuizScreen() {
         </p>
 
         <div className="quiz-map-wrap">
-          <RouteMap className="quiz-map" origin={routeOrigin()} originKnown={!!userGeo} dest={destCoord()} route={route} />
+          <RouteMap className="quiz-map" origin={routeOrigin()} originKnown={!!userGeo} dest={destCoord()} route={route} heading={heading} />
           <div className="map-legend">
             <span>
               <i className="dot dot-user" />現在地

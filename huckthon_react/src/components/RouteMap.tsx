@@ -7,6 +7,7 @@ interface RouteMapProps {
   originKnown: boolean;
   dest: LatLng & { name: string };
   route: RouteResult | null;
+  heading?: number | null;
   onMapClick?: (lat: number, lng: number) => void;
   className?: string;
 }
@@ -14,7 +15,7 @@ interface RouteMapProps {
 // Leaflet + OpenStreetMap tiles (no API key needed). Ported from the original
 // renderRouteMap(): shows origin/destination markers and the walking route line,
 // optionally letting the player click the map to pick a destination.
-export function RouteMap({ origin, originKnown, dest, route, onMapClick, className }: RouteMapProps) {
+export function RouteMap({ origin, originKnown, dest, route, heading, onMapClick, className }: RouteMapProps) {
   const elRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layersRef = useRef<{ userMarker: L.CircleMarker | null; destMarker: L.CircleMarker | null; line: L.Polyline | null }>({
@@ -22,6 +23,8 @@ export function RouteMap({ origin, originKnown, dest, route, onMapClick, classNa
     destMarker: null,
     line: null,
   });
+  const headingMarkerRef = useRef<L.Marker | null>(null);
+  const fittedKeyRef = useRef<string | null>(null);
   const onMapClickRef = useRef(onMapClick);
   useEffect(() => {
     onMapClickRef.current = onMapClick;
@@ -77,10 +80,44 @@ export function RouteMap({ origin, originKnown, dest, route, onMapClick, classNa
     const lineCoords: [number, number][] = useReal && route ? route.coords : [[origin.lat, origin.lng], [dest.lat, dest.lng]];
     layers.line = L.polyline(lineCoords, useReal ? { color: '#15130f', weight: 4, opacity: 0.85 } : { color: '#15130f', weight: 2, dashArray: '4 6', opacity: 0.7 }).addTo(map);
 
-    map.fitBounds(lineCoords, { padding: [30, 30], maxZoom: 15 });
+    // Only auto-fit/re-zoom the view the first time this route/destination is shown — subsequent
+    // marker-position updates (e.g. from GPS jitter while the player holds a zoomed-in view) must
+    // not reset a zoom level the player chose themselves (this was the "zooming in on mobile keeps
+    // snapping back out" bug).
+    const fitKey = `${dest.lat.toFixed(5)},${dest.lng.toFixed(5)}|${useReal ? 'r' : 's'}|${lineCoords.length}`;
+    if (fittedKeyRef.current !== fitKey) {
+      fittedKeyRef.current = fitKey;
+      map.fitBounds(lineCoords, { padding: [30, 30], maxZoom: 15 });
+    }
     const t = setTimeout(() => map.invalidateSize(), 60);
     return () => clearTimeout(t);
   }, [origin.lat, origin.lng, originKnown, dest.lat, dest.lng, route]);
+
+  // Facing-direction arrow at the user's position. Kept in its own effect (no fitBounds call here)
+  // so it can update on every compass reading without ever touching the map's zoom/pan.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (heading == null) {
+      if (headingMarkerRef.current) {
+        map.removeLayer(headingMarkerRef.current);
+        headingMarkerRef.current = null;
+      }
+      return;
+    }
+    const icon = L.divIcon({
+      className: 'heading-arrow-icon',
+      html: `<div class="heading-arrow" style="transform:rotate(${heading}deg)"></div>`,
+      iconSize: [34, 34],
+      iconAnchor: [17, 17],
+    });
+    if (!headingMarkerRef.current) {
+      headingMarkerRef.current = L.marker([origin.lat, origin.lng], { icon, interactive: false, zIndexOffset: 1000 }).addTo(map);
+    } else {
+      headingMarkerRef.current.setLatLng([origin.lat, origin.lng]);
+      headingMarkerRef.current.setIcon(icon);
+    }
+  }, [heading, origin.lat, origin.lng]);
 
   return <div ref={elRef} className={className} />;
 }

@@ -16,6 +16,7 @@ export function SetupScreen() {
     routeOrigin,
     destCoord,
     userGeo,
+    heading,
     stopsCountChoice,
     setStopsCountChoice,
     depart,
@@ -100,6 +101,7 @@ export function SetupScreen() {
             originKnown={!!userGeo}
             dest={destCoord()}
             route={route}
+            heading={heading}
             onMapClick={(lat, lng) => void selectDestinationFromMap(lat, lng)}
           />
           <div className="map-legend">

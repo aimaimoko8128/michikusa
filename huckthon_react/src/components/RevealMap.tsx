@@ -16,6 +16,14 @@ interface RevealMapProps {
 export function RevealMap({ result, origin, originKnown, dest, route, className }: RevealMapProps) {
   const elRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
+  // Latest origin/originKnown, read (not watched) by the build effect below — this reveal is a
+  // static one-shot snapshot, so a GPS update arriving after it's drawn must not tear the whole
+  // map down and rebuild it (that reset any zoom the player had chosen, especially noticeable on
+  // mobile where continued GPS watching keeps firing while this screen is open).
+  const latestRef = useRef({ origin, originKnown });
+  useEffect(() => {
+    latestRef.current = { origin, originKnown };
+  }, [origin, originKnown]);
 
   useEffect(() => {
     if (!elRef.current) return;
@@ -23,6 +31,7 @@ export function RevealMap({ result, origin, originKnown, dest, route, className 
       mapRef.current.remove();
       mapRef.current = null;
     }
+    const { origin: originNow, originKnown: originKnownNow } = latestRef.current;
     const map = L.map(elRef.current, { attributionControl: true, zoomControl: true });
     mapRef.current = map;
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -32,7 +41,7 @@ export function RevealMap({ result, origin, originKnown, dest, route, className 
 
     const target: [number, number] = [result.targetLat, result.targetLng];
     const destPt: [number, number] = [dest.lat, dest.lng];
-    const originPt: [number, number] = [origin.lat, origin.lng];
+    const originPt: [number, number] = [originNow.lat, originNow.lng];
     let boundsPts: [number, number][] = [target, destPt, originPt];
 
     const useReal = !!(route && route.isReal);
@@ -42,7 +51,7 @@ export function RevealMap({ result, origin, originKnown, dest, route, className 
 
     L.circleMarker(originPt, { radius: 7, color: '#15130f', weight: 2, fillColor: '#faf9f6', fillOpacity: 1 })
       .addTo(map)
-      .bindTooltip(originKnown ? 'スタート地点（現在地）' : 'スタート地点（未取得のため仮の位置）');
+      .bindTooltip(originKnownNow ? 'スタート地点（現在地）' : 'スタート地点（未取得のため仮の位置）');
 
     L.circleMarker(destPt, { radius: 7, color: '#c1321a', weight: 2, fillColor: '#faf9f6', fillOpacity: 1 })
       .addTo(map)
@@ -64,7 +73,7 @@ export function RevealMap({ result, origin, originKnown, dest, route, className 
     map.fitBounds(boundsPts, { padding: [36, 36], maxZoom: 15 });
     const t = setTimeout(() => map.invalidateSize(), 60);
     return () => clearTimeout(t);
-  }, [result, origin.lat, origin.lng, originKnown, dest.lat, dest.lng, dest.name, route]);
+  }, [result, dest.lat, dest.lng, dest.name, route]);
 
   useEffect(
     () => () => {

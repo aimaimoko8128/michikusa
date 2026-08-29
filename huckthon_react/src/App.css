@@ -405,11 +405,14 @@
     width:34px; height:34px; border-radius:50%; border:1.5px solid var(--ink);
     background:var(--bg-2); color:var(--ink); font-family:var(--label); font-size:13px;
     font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;
+    box-shadow:0 2px 6px rgba(21,19,15,0.14);
+    transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease, color .12s ease, background .12s ease;
   }
-  .stop-chip:hover:not(:disabled){border-color:var(--shu); color:var(--shu);}
+  .stop-chip:hover:not(:disabled){border-color:var(--shu); color:var(--shu); transform:translateY(-2px); box-shadow:0 5px 12px rgba(193,50,26,0.28);}
+  .stop-chip:active:not(:disabled){transform:translateY(0); box-shadow:0 2px 6px rgba(21,19,15,0.14);}
   .stop-chip.answered{border-color:var(--shu); color:var(--shu);}
-  .stop-chip.active{background:var(--ink); color:var(--bg); border-color:var(--ink);}
-  .stop-chip.done{background:var(--bg-2); border-color:var(--ink-faint); color:var(--ink-faint); cursor:default;}
+  .stop-chip.active{background:var(--ink); color:var(--bg); border-color:var(--ink); box-shadow:0 3px 9px rgba(21,19,15,0.3);}
+  .stop-chip.done{background:var(--bg-2); border-color:var(--ink-faint); color:var(--ink-faint); cursor:default; box-shadow:none; opacity:.55;}
   .stop-picker-note{font-size:11.5px; color:var(--ink-faint); margin:0 0 16px; line-height:1.7;}
   .quiz-map-wrap{width:100%; margin-bottom:16px;}
   .quiz-map{
@@ -555,6 +558,20 @@
     width:100%; height:220px; border:1.5px solid var(--ink); background:var(--bg-2);
   }
   .reveal-map .leaflet-control-attribution{font-size:9px;}
+  /* 現在地マーカーの上に重ねる、向いている方向を示す矢印（コンパス対応端末のみ表示） */
+  .heading-arrow-icon{ background:transparent; border:none; }
+  .heading-arrow{
+    width:34px; height:34px;
+    display:flex; align-items:flex-start; justify-content:center;
+    transform-origin:50% 50%;
+    pointer-events:none;
+  }
+  .heading-arrow::before{
+    content:''; width:0; height:0; margin-top:1px;
+    border-left:7px solid transparent; border-right:7px solid transparent;
+    border-bottom:14px solid var(--shu);
+    filter:drop-shadow(0 1px 2px rgba(21,19,15,0.5));
+  }
   .map-legend{
     display:flex; gap:18px; justify-content:center; flex-wrap:wrap;
     margin-top:10px; font-family:var(--label); font-size:11.5px; color:var(--ink-dim);
