@@ -11,20 +11,16 @@ export function haversine(lat1: number, lng1: number, lat2: number, lng2: number
 }
 
 export function scoreForDistance(d: number): number {
-  if (d <= 5) return 100;
-  if (d <= 10) return 90;
-  if (d <= 25) return 75;
-  if (d <= 50) return 50;
-  if (d <= 100) return 25;
-  return 0;
+  // 1000-point scale: lose 1 point per meter of distance, floor at 0.
+  return Math.max(0, Math.round(1000 - d));
 }
 
 export function scoreLabel(score: number): string {
-  if (score >= 100) return 'パーフェクト！大正解！';
-  if (score >= 90) return 'ナイス！かなり近い！';
-  if (score >= 75) return 'いい線いってる！';
-  if (score >= 50) return 'おしい！もう少し！';
-  if (score >= 25) return '近くまで来てた！';
+  if (score >= 990) return 'パーフェクト！大正解！';
+  if (score >= 950) return 'ナイス！かなり近い！';
+  if (score >= 900) return 'いい線いってる！';
+  if (score >= 750) return 'おしい！もう少し！';
+  if (score >= 500) return '近くまで来てた！';
   return '圏外…でもナイストライ！';
 }
 

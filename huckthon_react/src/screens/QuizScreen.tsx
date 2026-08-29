@@ -3,21 +3,72 @@ import { useGame } from '../state/useGame';
 import { RouteMap } from '../components/RouteMap';
 import { absoluteImageUrl } from '../lib/api';
 
+type Circle = { cx: number; cy: number; r: number };
+
+// Greedy circle-packing: samples a grid over the 400x300 viewBox and keeps adding
+// randomly-placed circles until at least ~55% of the sampled grid is covered (or the
+// circle/attempt caps are hit). The result permanently blacks out part of the sample
+// photo in group battles, so it can never be fully revealed by peeking around.
+function generateBlackoutCircles(): Circle[] {
+  const W = 400;
+  const H = 300;
+  const GRID_X = 40;
+  const GRID_Y = 30;
+  const totalPoints = GRID_X * GRID_Y;
+  const covered = new Array<boolean>(totalPoints).fill(false);
+  const circles: Circle[] = [];
+
+  function markCovered(cx: number, cy: number, r: number): number {
+    let count = 0;
+    for (let gy = 0; gy < GRID_Y; gy++) {
+      const py = (gy + 0.5) * (H / GRID_Y);
+      for (let gx = 0; gx < GRID_X; gx++) {
+        const idx = gy * GRID_X + gx;
+        if (covered[idx]) continue;
+        const px = (gx + 0.5) * (W / GRID_X);
+        const dx = px - cx;
+        const dy = py - cy;
+        if (dx * dx + dy * dy <= r * r) {
+          covered[idx] = true;
+          count++;
+        }
+      }
+    }
+    return count;
+  }
+
+  let coveredCount = 0;
+  const targetRatio = 0.55;
+  const maxCircles = 14;
+  let attempts = 0;
+  while (coveredCount / totalPoints < targetRatio && circles.length < maxCircles && attempts < 200) {
+    attempts++;
+    const r = 45 + Math.random() * 70;
+    const cx = Math.random() * W;
+    const cy = Math.random() * H;
+    const gained = markCovered(cx, cy, r);
+    if (gained > 0 || circles.length < 3) {
+      circles.push({ cx, cy, r });
+      coveredCount = covered.reduce((a, b) => a + (b ? 1 : 0), 0);
+    }
+  }
+  return circles;
+}
+
 export function QuizScreen() {
   const { stops, idx, setIdx, stopsCount, results, isStopAnswered, submitPhoto, groupMode, room, route, routeOrigin, destCoord, userGeo, destination } = useGame();
   const lm = stops[idx];
 
-  const frameRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [vx, setVx] = useState('50%');
-  const [vy, setVy] = useState('50%');
   const [status, setStatus] = useState('');
+
+  const veiled = groupMode;
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- `idx` intentionally forces a fresh random layout each time the shown stop changes
+  const blackoutCircles = useMemo(() => (veiled ? generateBlackoutCircles() : []), [veiled, idx]);
 
   useEffect(() => {
     if (fileInputRef.current) fileInputRef.current.value = '';
     // eslint-disable-next-line react-hooks/set-state-in-effect -- resets local UI state for the newly-shown stop
-    setVx('50%');
-    setVy('50%');
     setStatus('');
   }, [idx]);
 
@@ -33,25 +84,21 @@ export function QuizScreen() {
 
   if (!lm) return null;
 
-  function updateVeilPosition(clientX: number, clientY: number) {
-    const frame = frameRef.current;
-    if (!frame) return;
-    const rect = frame.getBoundingClientRect();
-    setVx(Math.max(0, Math.min(rect.width, clientX - rect.left)) + 'px');
-    setVy(Math.max(0, Math.min(rect.height, clientY - rect.top)) + 'px');
-  }
-
   function handleFile(file: File) {
     setStatus('写真を確認中…');
     const reader = new FileReader();
     reader.onload = () => {
       setStatus('位置情報を確認中…');
-      void submitPhoto(String(reader.result));
+      void submitPhoto(String(reader.result)).then((retryMessage) => {
+        if (retryMessage) {
+          setStatus(retryMessage);
+          if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+      });
     };
     reader.readAsDataURL(file);
   }
 
-  const veiled = groupMode;
   const imgSrc = absoluteImageUrl(lm.liveImg);
 
   return (
@@ -106,27 +153,15 @@ export function QuizScreen() {
           </div>
         </div>
 
-        <div
-          className={'photo-frame' + (veiled ? ' veiled' : '')}
-          id="photo-frame"
-          ref={frameRef}
-          onMouseMove={(e) => veiled && updateVeilPosition(e.clientX, e.clientY)}
-          onTouchStart={(e) => {
-            if (!veiled) return;
-            const t = e.touches[0];
-            if (t) updateVeilPosition(t.clientX, t.clientY);
-          }}
-          onTouchMove={(e) => {
-            if (!veiled) return;
-            const t = e.touches[0];
-            if (t) updateVeilPosition(t.clientX, t.clientY);
-            e.preventDefault();
-          }}
-          style={{ ['--vx' as string]: vx, ['--vy' as string]: vy }}
-        >
+        <div className={'photo-frame' + (veiled ? ' veiled' : '')} id="photo-frame">
           <img className="quiz-img" src={imgSrc} alt="見本の写真" />
-          <div className="photo-veil" style={veiled ? { backgroundImage: `url("${imgSrc}")` } : undefined} />
-          {veiled && <p className="photo-veil-hint">写真を指でなぞると、なぞった部分だけ見えます</p>}
+          {veiled && (
+            <svg className="photo-blackout" id="photo-blackout" viewBox="0 0 400 300" preserveAspectRatio="none" aria-hidden="true">
+              {blackoutCircles.map((c, i) => (
+                <circle key={i} cx={c.cx.toFixed(1)} cy={c.cy.toFixed(1)} r={c.r.toFixed(1)} />
+              ))}
+            </svg>
+          )}
         </div>
         <p className="quiz-caption">この景色を探してください</p>
         <p className="quiz-hint">{lm.hint}</p>

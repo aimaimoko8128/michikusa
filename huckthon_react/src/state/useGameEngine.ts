@@ -330,42 +330,60 @@ export function useGameEngine() {
     goToSetup();
   }, [goToSetup]);
 
-  const getGeoOrSimulate = useCallback((target: LatLng): Promise<{ distance: number; simulated: boolean; userGeo: LatLng | null }> => {
+  const GEO_TIMEOUT_MS = 10000;
+
+  type GeoOutcome =
+    | { ok: true; distance: number; simulated: boolean; userGeo: LatLng | null }
+    | { ok: false; message: string };
+
+  // Resolves the distance to `target` for scoring. If the device has no geolocation
+  // support at all, falls back to a simulated ("experience mode") distance. Otherwise,
+  // a failed/denied/timed-out fix does NOT get a simulated fallback — the caller is asked
+  // to retake the photo instead, matching the original app's stricter behavior.
+  const getGeoOrSimulate = useCallback((target: LatLng): Promise<GeoOutcome> => {
     return new Promise((resolve) => {
       if (!navigator.geolocation) {
-        resolve({ distance: simulateDistance(), simulated: true, userGeo: null });
+        resolve({ ok: true, distance: simulateDistance(), simulated: true, userGeo: null });
         return;
       }
       let done = false;
       const timer = setTimeout(() => {
         if (done) return;
         done = true;
-        resolve({ distance: simulateDistance(), simulated: true, userGeo: null });
-      }, 8000);
+        resolve({ ok: false, message: '10秒以内に位置情報を取得できませんでした。電波状況の良い場所で、もう一度撮影してください。' });
+      }, GEO_TIMEOUT_MS);
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           if (done) return;
           done = true;
           clearTimeout(timer);
           const d = haversine(pos.coords.latitude, pos.coords.longitude, target.lat, target.lng);
-          resolve({ distance: d, simulated: false, userGeo: { lat: pos.coords.latitude, lng: pos.coords.longitude } });
+          resolve({ ok: true, distance: d, simulated: false, userGeo: { lat: pos.coords.latitude, lng: pos.coords.longitude } });
         },
-        () => {
+        (err) => {
           if (done) return;
           done = true;
           clearTimeout(timer);
-          resolve({ distance: simulateDistance(), simulated: true, userGeo: null });
+          if (err && err.code === 1) {
+            resolve({ ok: false, message: '位置情報の利用が許可されていません。ブラウザの設定で位置情報を許可してから、もう一度撮影してください。' });
+          } else {
+            resolve({ ok: false, message: '位置情報を取得できませんでした。もう一度撮影してください。' });
+          }
         },
-        { timeout: 7500, enableHighAccuracy: true }
+        { timeout: GEO_TIMEOUT_MS, enableHighAccuracy: true }
       );
     });
   }, []);
 
   const submitPhoto = useCallback(
-    async (dataUrl: string) => {
+    async (dataUrl: string): Promise<string | null> => {
       const lm = stops[idx];
-      if (!lm) return;
-      const { distance, simulated, userGeo: shotGeo } = await getGeoOrSimulate(lm);
+      if (!lm) return null;
+      const geoOutcome = await getGeoOrSimulate(lm);
+      if (!geoOutcome.ok) {
+        return geoOutcome.message;
+      }
+      const { distance, simulated, userGeo: shotGeo } = geoOutcome;
       const score = scoreForDistance(distance);
       const newResult: QuizResult = {
         stopIdx: idx,
@@ -418,6 +436,7 @@ export function useGameEngine() {
         });
         setIdx(firstUnansweredIdx());
         setScreen('quiz');
+        return null;
       } else {
         compressImageDataUrl(dataUrl, 360, 0.65).then((thumb) => {
           saveHistoryEntry({
@@ -446,6 +465,7 @@ export function useGameEngine() {
           setIdx(next);
           setScreen('quiz');
         }
+        return null;
       }
     },
     [stops, idx, getGeoOrSimulate, groupMode, roomCode, destination, playerName, firstUnansweredIdx, stopsCount, playerId]

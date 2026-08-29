@@ -25,6 +25,16 @@ export function saveHistoryEntry(entry: HistoryEntry): void {
   }
 }
 
+export function deleteHistoryEntry(index: number): void {
+  try {
+    const list = loadHistory();
+    list.splice(index, 1);
+    window.localStorage.setItem(HISTORY_KEY, JSON.stringify(list));
+  } catch {
+    /* ignore */
+  }
+}
+
 export function loadRecentRooms(): RecentRoom[] {
   try {
     const raw = window.localStorage.getItem(RECENT_ROOMS_KEY);
@@ -39,6 +49,15 @@ export function saveRecentRoom(code: string, destination: string): void {
     const list = loadRecentRooms().filter((r) => r.code !== code);
     list.unshift({ code, destination: destination || '', ts: Date.now() });
     window.localStorage.setItem(RECENT_ROOMS_KEY, JSON.stringify(list.slice(0, RECENT_ROOMS_MAX)));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function deleteRecentRoom(code: string): void {
+  try {
+    const list = loadRecentRooms().filter((r) => r.code !== code);
+    window.localStorage.setItem(RECENT_ROOMS_KEY, JSON.stringify(list));
   } catch {
     /* ignore */
   }

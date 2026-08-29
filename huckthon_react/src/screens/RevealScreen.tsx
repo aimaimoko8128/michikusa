@@ -4,42 +4,85 @@ import { RevealMap } from '../components/RevealMap';
 import { absoluteImageUrl } from '../lib/api';
 import { directionsUrl, fmtDist, scoreLabel } from '../lib/geo';
 
+// Counts `el`'s displayed number up from 0 to `target` over `durationMs`, easing out (cubic),
+// and briefly pops it with a bounce class when the animation finishes.
+function animateScoreCountUp(
+  el: { current: number },
+  target: number,
+  durationMs: number,
+  setShown: (n: number) => void,
+  onDone: () => void
+): () => void {
+  let frame = 0;
+  let start: number | null = null;
+  const tick = (ts: number) => {
+    if (start === null) start = ts;
+    const progress = Math.min(1, (ts - start) / durationMs);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const cur = Math.round(target * eased);
+    el.current = cur;
+    setShown(cur);
+    if (progress < 1) {
+      frame = requestAnimationFrame(tick);
+    } else {
+      setShown(target);
+      onDone();
+    }
+  };
+  frame = requestAnimationFrame(tick);
+  return () => cancelAnimationFrame(frame);
+}
+
 export function RevealScreen() {
   const { results, revealIdx, revealFinal, advanceReveal, stopsCount, route, routeOrigin, destCoord, userGeo, replay, goHome } = useGame();
   const r = results[revealIdx];
 
   const [judging, setJudging] = useState(true);
   const [shownScore, setShownScore] = useState(0);
-  const scoreIntervalRef = useRef<number | null>(null);
+  const [scorePop, setScorePop] = useState(false);
+  const shownScoreRef = useRef(0);
+  const cancelAnimRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (revealFinal || !r) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- (re)starts the judging/score-count animation for the newly-shown result
     setJudging(true);
     setShownScore(0);
-    if (scoreIntervalRef.current) clearInterval(scoreIntervalRef.current);
+    setScorePop(false);
+    if (cancelAnimRef.current) cancelAnimRef.current();
     const judgeTimer = window.setTimeout(() => {
       setJudging(false);
-      let cur = 0;
-      scoreIntervalRef.current = window.setInterval(() => {
-        cur += 4;
-        if (cur >= r.score) {
-          cur = r.score;
-          if (scoreIntervalRef.current) clearInterval(scoreIntervalRef.current);
-        }
-        setShownScore(cur);
-      }, 18);
+      cancelAnimRef.current = animateScoreCountUp(shownScoreRef, r.score, 1100, setShownScore, () => {
+        setScorePop(true);
+        setTimeout(() => setScorePop(false), 260);
+      });
     }, 850);
     return () => {
       clearTimeout(judgeTimer);
-      if (scoreIntervalRef.current) clearInterval(scoreIntervalRef.current);
+      if (cancelAnimRef.current) cancelAnimRef.current();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [revealIdx, revealFinal]);
 
+  const [shownTotal, setShownTotal] = useState(0);
+  const shownTotalRef = useRef(0);
+  const cancelTotalAnimRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    if (!revealFinal) return;
+    const total = results.reduce((s, res) => s + res.score, 0);
+    shownTotalRef.current = 0;
+    if (cancelTotalAnimRef.current) cancelTotalAnimRef.current();
+    cancelTotalAnimRef.current = animateScoreCountUp(shownTotalRef, total, 1200, setShownTotal, () => {});
+    return () => {
+      if (cancelTotalAnimRef.current) cancelTotalAnimRef.current();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [revealFinal]);
+
   if (revealFinal) {
     const total = results.reduce((s, res) => s + res.score, 0);
-    const max = stopsCount * 100;
+    const max = stopsCount * 1000;
     const pct = total / max;
     const rank = pct >= 0.9 ? 'S' : pct >= 0.7 ? 'A' : pct >= 0.45 ? 'B' : 'C';
     return (
@@ -48,9 +91,9 @@ export function RevealScreen() {
           <div className="result-wrap">
             <div className="rank-badge">{rank}</div>
             <div className="total-score">
-              合計スコア{'　'}<b>{total}</b> 点
+              合計スコア{'　'}<b>{shownTotal}</b> 点
             </div>
-            <p className="score-hint">見本の地点に近い場所で撮影できているほど、高得点になります（1問100点満点）。</p>
+            <p className="score-hint">見本の地点に近い場所で撮影できているほど、高得点になります（1問1000点満点）。</p>
             <div className="result-list">
               {results.map((res) => (
                 <div className="result-row" key={res.stopIdx}>
@@ -111,7 +154,7 @@ export function RevealScreen() {
             </div>
           </div>
           <div className="score-plaque">
-            <div className="score-num">{shownScore}</div>
+            <div className={'score-num' + (scorePop ? ' score-pop' : '')}>{shownScore}</div>
             <div className="score-label">{scoreLabel(r.score)}</div>
           </div>
           <div className="dist-line">推定距離: 約 {fmtDist(r.distance)}</div>

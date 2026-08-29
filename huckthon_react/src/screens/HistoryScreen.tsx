@@ -1,11 +1,25 @@
 import { useEffect, useState } from 'react';
 import { useGame } from '../state/useGame';
-import { loadHistory, loadRecentRooms } from '../lib/storage';
+import { loadHistory, loadRecentRooms, deleteHistoryEntry, deleteRecentRoom } from '../lib/storage';
 import { absoluteImageUrl } from '../lib/api';
 import { fmtDateShort } from '../lib/geo';
 import type { HistoryEntry, RoomHistoryEntry } from '../lib/types';
 
-function HistoryRow({ userImg, targetImg, stopName, metaLine, score }: { userImg: string; targetImg: string; stopName: string; metaLine: string; score: number }) {
+function HistoryRow({
+  userImg,
+  targetImg,
+  stopName,
+  metaLine,
+  score,
+  onDelete,
+}: {
+  userImg: string;
+  targetImg: string;
+  stopName: string;
+  metaLine: string;
+  score: number;
+  onDelete?: () => void;
+}) {
   return (
     <div className="history-row">
       <div className="h-imgs">
@@ -17,6 +31,11 @@ function HistoryRow({ userImg, targetImg, stopName, metaLine, score }: { userImg
         <div className="h-meta">{metaLine}</div>
       </div>
       <div className="h-score">{score}</div>
+      {onDelete && (
+        <button type="button" className="h-delete" aria-label="この記録を削除" onClick={onDelete}>
+          ×
+        </button>
+      )}
     </div>
   );
 }
@@ -24,14 +43,16 @@ function HistoryRow({ userImg, targetImg, stopName, metaLine, score }: { userImg
 export function HistoryScreen() {
   const { setScreen, getRoomHistory } = useGame();
   const [myHistory, setMyHistory] = useState<HistoryEntry[]>([]);
-  const recentRooms = loadRecentRooms();
-  const [activeRoom, setActiveRoom] = useState<string | null>(recentRooms[0]?.code ?? null);
+  const [recentRooms, setRecentRooms] = useState(() => loadRecentRooms());
+  const [activeRoom, setActiveRoom] = useState<string | null>(null);
   const [roomHistory, setRoomHistory] = useState<RoomHistoryEntry[] | null>(null);
   const [roomHistoryError, setRoomHistoryError] = useState(false);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time read of localStorage on mount
     setMyHistory(loadHistory());
+    setActiveRoom((cur) => cur ?? recentRooms[0]?.code ?? null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -46,6 +67,20 @@ export function HistoryScreen() {
       })
       .catch(() => setRoomHistoryError(true));
   }, [activeRoom, getRoomHistory]);
+
+  function handleDeleteHistory(index: number) {
+    if (!confirm('この記録を削除しますか？（元に戻せません）')) return;
+    deleteHistoryEntry(index);
+    setMyHistory(loadHistory());
+  }
+
+  function handleDeleteRoom(code: string) {
+    if (!confirm('このルームを記録一覧から削除しますか？（自分の端末上の一覧から削除されます）')) return;
+    deleteRecentRoom(code);
+    const next = loadRecentRooms();
+    setRecentRooms(next);
+    setActiveRoom((cur) => (cur === code ? next[0]?.code ?? null : cur));
+  }
 
   return (
     <section className="screen active" id="screen-history">
@@ -67,6 +102,7 @@ export function HistoryScreen() {
                   stopName={h.stopName}
                   score={h.score}
                   metaLine={`${h.destination ? h.destination + ' ・ ' : ''}${fmtDateShort(h.ts)}`}
+                  onDelete={() => handleDeleteHistory(i)}
                 />
               ))
             )}
@@ -78,14 +114,19 @@ export function HistoryScreen() {
           <label>グループ対戦の記録（みんなの写真）</label>
           <div className="room-history-picker">
             {recentRooms.map((r) => (
-              <button
-                key={r.code}
-                type="button"
-                className={'room-history-chip' + (activeRoom === r.code ? ' active' : '')}
-                onClick={() => setActiveRoom(r.code)}
-              >
-                {(r.destination || r.code) + '（' + r.code + '）'}
-              </button>
+              <div key={r.code} className={'room-history-chip' + (activeRoom === r.code ? ' active' : '')}>
+                <button type="button" className="room-history-chip-label" onClick={() => setActiveRoom(r.code)}>
+                  {(r.destination || r.code) + '（' + r.code + '）'}
+                </button>
+                <button
+                  type="button"
+                  className="room-history-chip-del"
+                  aria-label="このルームを記録一覧から削除"
+                  onClick={() => handleDeleteRoom(r.code)}
+                >
+                  ×
+                </button>
+              </div>
             ))}
           </div>
           <div className="history-list">
