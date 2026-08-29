@@ -617,9 +617,11 @@
   }
   .map-legend span{display:inline-flex; align-items:center; gap:6px;}
   .map-legend .dot{width:9px; height:9px; border-radius:50%; display:inline-block; border:1.5px solid #fff; box-shadow:0 0 0 1px var(--ink);}
-  /* 現在地は地図上と同じ矢印イラストの縮小版にして、丸(黒)のマーカーと誤認しないようにする */
-  .dot-user{
-    width:13px; height:13px; border-radius:0; border:none; box-shadow:none; background:none;
+  /* 現在地は地図上と同じ矢印イラストにして、丸(黒)のマーカーと誤認しないようにする。
+     `.map-legend .dot`（丸の縁取り）より詳細度を上げて確実に上書きし、目的地の丸より
+     ひとまわり大きく見えるサイズにする。 */
+  .map-legend .dot-user{
+    width:20px; height:20px; border-radius:0; border:none; box-shadow:none; background:none;
     background-image:url('./assets/heading-arrow.png'); background-size:contain; background-repeat:no-repeat; background-position:center;
   }
   .dot-target{background:var(--shu);}

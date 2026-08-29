@@ -558,11 +558,22 @@ export function useGameEngine() {
     [stops, idx, groupMode, roomCode, destination, playerName, firstUnansweredIdx, stopsCount, playerId, triggerGroupReveal]
   );
 
+  // Guards against a slow/rare-but-possible GPS resolution racing a later user action for the
+  // same photo (typically: the player gets impatient and taps "skip" while a still-pending
+  // getGeoOrSimulate() from the original attempt is stuck waiting — some mobile browsers can, in
+  // rare cases, never invoke either geolocation callback at all, e.g. if a system permission
+  // dialog is left unanswered). Every new submission attempt claims a fresh token; if a call
+  // resolves under a stale token, its result is dropped instead of double-submitting/overwriting
+  // an already-finalized answer or yanking the player back after they've moved on.
+  const submissionTokenRef = useRef(0);
+
   const submitPhoto = useCallback(
     async (dataUrl: string): Promise<string | null> => {
       const lm = stops[idx];
       if (!lm) return null;
+      const myToken = ++submissionTokenRef.current;
       const geoOutcome = await getGeoOrSimulate(lm);
+      if (submissionTokenRef.current !== myToken) return null; // superseded — e.g. the player already skipped
       if (!geoOutcome.ok) {
         return geoOutcome.message;
       }
@@ -577,7 +588,10 @@ export function useGameEngine() {
   // can't be obtained (permission denied at the OS level, no signal indoors, desktop testing, …)
   // so a failed fix never leaves them stuck retaking the same photo forever.
   const skipGeoAndSubmit = useCallback(
-    async (dataUrl: string): Promise<string | null> => finalizeAnswer(dataUrl, simulateDistance(), true, null),
+    async (dataUrl: string): Promise<string | null> => {
+      submissionTokenRef.current++; // invalidate any still-pending submitPhoto() for this photo
+      return finalizeAnswer(dataUrl, simulateDistance(), true, null);
+    },
     [finalizeAnswer]
   );
 

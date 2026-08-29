@@ -42,11 +42,18 @@ export function QuizScreen() {
     reader.onload = () => {
       const dataUrl = String(reader.result);
       setStatus('位置情報を確認中…');
+      // Offer the skip button as soon as we start waiting on GPS, not only once it has already
+      // failed — on some mobile browsers the location callback can hang far longer than our
+      // internal timeout expects, so the player shouldn't have to wait that out before they get
+      // an escape hatch.
+      setSkippableDataUrl(dataUrl);
       void submitPhoto(dataUrl).then((retryMessage) => {
         if (retryMessage) {
           setStatus(retryMessage);
           setSkippableDataUrl(dataUrl);
           if (fileInputRef.current) fileInputRef.current.value = '';
+        } else {
+          setSkippableDataUrl(null);
         }
       });
     };
