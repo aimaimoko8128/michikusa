@@ -1,0 +1,17 @@
+{
+  "name": "michikusa-backend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "\u307f\u3061\u304f\u3055 - backend API (landmarks, geocoding/route proxy, Street View proxy, group battle rooms)",
+  "scripts": {
+    "dev": "node --watch server.js",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "socket.io": "^4.8.1"
+  }
+}

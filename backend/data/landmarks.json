@@ -1,0 +1,154 @@
+{
+  "landmarks": [
+    {
+      "key": "fushimi",
+      "name": "伏見稲荷大社",
+      "hint": "朱色の鳥居が幾重にも連なる、山あいの参道。",
+      "fact": "千本鳥居で知られる、外国人にも大人気の神社。",
+      "lat": 34.9671,
+      "lng": 135.7727,
+      "img": "/images/landmarks/fushimi.jpg"
+    },
+    {
+      "key": "kiyomizu",
+      "name": "清水寺",
+      "hint": "舞台づくりの本堂から、京都の街並みを見下ろせるお寺。",
+      "fact": "「清水の舞台から飛び降りる」ということわざの由来。",
+      "lat": 34.9949,
+      "lng": 135.785,
+      "img": "/images/landmarks/kiyomizu.jpg"
+    },
+    {
+      "key": "yasaka",
+      "name": "八坂神社",
+      "hint": "祇園のシンボル。朱塗りの楼門が印象的な神社。",
+      "fact": "祇園祭を主催する、京都有数の古社。",
+      "lat": 35.0037,
+      "lng": 135.7784,
+      "img": "/images/landmarks/yasaka.jpg"
+    },
+    {
+      "key": "nishiki",
+      "name": "錦市場",
+      "hint": "「京の台所」と呼ばれる、食べ歩きが楽しいアーケード街。",
+      "fact": "400年以上の歴史を持つ商店街。",
+      "lat": 35.0051,
+      "lng": 135.7649,
+      "img": "/images/landmarks/nishiki.jpg"
+    },
+    {
+      "key": "hakubutsukan",
+      "name": "京都国立博物館",
+      "hint": "レンガ造りの洋館が目を引く、歴史ある美術館。",
+      "fact": "明治時代に建てられた、京都でも屈指の名建築。",
+      "lat": 34.988,
+      "lng": 135.7714,
+      "img": "/images/landmarks/hakubutsukan.jpg"
+    },
+    {
+      "key": "byodoin",
+      "name": "平等院鳳凰堂",
+      "hint": "池に浮かぶような、左右対称の優美なお堂。",
+      "fact": "10円硬貨のデザインにもなっている、宇治の名所。",
+      "lat": 34.8885,
+      "lng": 135.8083,
+      "img": "/images/landmarks/byodoin.jpg"
+    },
+    {
+      "key": "kinkakuji",
+      "name": "金閣寺（鹿苑寺）",
+      "hint": "金色に輝く楼閣が、池に映り込む絶景スポット。",
+      "fact": "正式名称は鹿苑寺。世界文化遺産にも登録されている。",
+      "lat": 35.0394,
+      "lng": 135.7292,
+      "img": "/images/landmarks/kinkakuji.jpg"
+    },
+    {
+      "key": "ginkakuji",
+      "name": "銀閣寺（慈照寺）",
+      "hint": "銀色ではなく、静かな侘び寂びをたたえるお寺。",
+      "fact": "哲学の道の起点としても知られる。",
+      "lat": 35.027,
+      "lng": 135.7982,
+      "img": "/images/landmarks/ginkakuji.jpg"
+    },
+    {
+      "key": "chikurin",
+      "name": "嵐山 竹林の小径",
+      "hint": "空を覆うほどの竹が並ぶ、幻想的な散策路。",
+      "fact": "風にそよぐ竹の音は「日本の音風景100選」にも選定。",
+      "lat": 35.017,
+      "lng": 135.672,
+      "img": "/images/landmarks/chikurin.jpg"
+    },
+    {
+      "key": "togetsukyo",
+      "name": "渡月橋",
+      "hint": "嵐山を代表する、桂川に架かる大きな橋。",
+      "fact": "満月の夜に舟遊びをした際の名がついたと伝わる。",
+      "lat": 35.0094,
+      "lng": 135.6779,
+      "img": "/images/landmarks/togetsukyo.jpg"
+    },
+    {
+      "key": "gioji",
+      "name": "祇王寺",
+      "hint": "一面の苔庭に囲まれた、静かな小さな尼寺。",
+      "fact": "平家物語ゆかりの悲恋の尼寺として知られる。",
+      "lat": 35.0157,
+      "lng": 135.6664,
+      "img": "/images/landmarks/gioji.jpg"
+    },
+    {
+      "key": "rurikoin",
+      "name": "瑠璃光院",
+      "hint": "机に映り込む新緑・紅葉が話題のお寺。",
+      "fact": "通常非公開で、特別公開時のみ拝観できる。",
+      "lat": 35.0755,
+      "lng": 135.7986,
+      "img": "/images/landmarks/rurikoin.jpg"
+    },
+    {
+      "key": "kifune",
+      "name": "貴船神社",
+      "hint": "朱色の灯籠が続く石段が印象的な、水の神様の社。",
+      "fact": "縁結びの神様としても人気が高い。",
+      "lat": 35.1216,
+      "lng": 135.7648,
+      "img": "/images/landmarks/kifune.jpg"
+    },
+    {
+      "key": "kawai",
+      "name": "河合神社",
+      "hint": "下鴨神社の境内にある、美麗祈願で有名な社。",
+      "fact": "鏡絵馬に自分の顔を描いて奉納する風習がある。",
+      "lat": 35.0389,
+      "lng": 135.7727,
+      "img": "/images/landmarks/kawai.jpg"
+    },
+    {
+      "key": "gojunoto",
+      "name": "東寺 五重塔",
+      "hint": "京都駅から見える、日本一高い木造の塔。",
+      "fact": "高さ約55m。京都のシンボルのひとつ。",
+      "lat": 34.9808,
+      "lng": 135.7482,
+      "img": "/images/landmarks/gojunoto.jpg"
+    },
+    {
+      "key": "kongoji",
+      "name": "金剛寺（西京区）",
+      "hint": "住宅街の中にひっそりと佇む、落ち着いたお寺。",
+      "fact": "地元の人に大切に守られてきた小さな古刹。",
+      "lat": 34.991,
+      "lng": 135.689,
+      "img": "/images/landmarks/kongoji.jpg"
+    }
+  ],
+  "decor": {
+    "frame": "/images/decor/frame.png",
+    "sakura": "/images/decor/sakura.png",
+    "kimono": "/images/decor/kimono.png",
+    "komono": "/images/decor/komono.png"
+  }
+}
