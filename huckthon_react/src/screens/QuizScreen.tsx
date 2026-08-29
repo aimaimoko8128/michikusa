@@ -53,6 +53,11 @@ export function QuizScreen() {
           setSkippableDataUrl(dataUrl);
           if (fileInputRef.current) fileInputRef.current.value = '';
         } else {
+          // Success: clear the "位置情報を確認中…" label. Usually the effect keyed on `idx`
+          // (above) already does this once the screen advances to the next stop, but clear it
+          // explicitly too — otherwise it's left stuck on screen for any case where idx doesn't
+          // change (e.g. the last stop, or a retake after the round is already complete).
+          setStatus('');
           setSkippableDataUrl(null);
         }
       });

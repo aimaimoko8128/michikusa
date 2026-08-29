@@ -64,12 +64,9 @@ export function HeroScreen() {
       <SakuraPetals />
       <div className="hero-content">
         <div className="hero-mark">京都リアルワールド探索ゲーム</div>
-        <div className="plaque">
-          <h1 className="hero-title">
-            <img src={titleImg} alt="KyotoGuessr" className="hero-title-img" />
-          </h1>
-          <p className="hero-tagline">目的地までの道のりを、ゲームにする。</p>
-        </div>
+        <h1 className="hero-title">
+          <img src={titleImg} alt="KyotoGuessr" className="hero-title-img" />
+        </h1>
         <div className="hero-primary-actions">
           <button className="btn hero-primary-btn" onClick={goToSetup}>
             はじめる

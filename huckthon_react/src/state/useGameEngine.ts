@@ -212,11 +212,6 @@ export function useGameEngine() {
   const [revealFinal, setRevealFinal] = useState(false);
 
   const isStopAnswered = useCallback((i: number) => results.some((r) => r.stopIdx === i), [results]);
-  const firstUnansweredIdx = useCallback(() => {
-    for (let i = 0; i < stops.length; i++) if (!isStopAnswered(i)) return i;
-    return 0;
-  }, [stops, isStopAnswered]);
-
   // ---------------- group battle ----------------
   const [playerId] = useState(() => getOrCreatePlayerId());
   const [playerName, setPlayerName] = useState('');
@@ -527,7 +522,17 @@ export function useGameEngine() {
         // immediately bounce back to "全員の撮影を待っています…" because this fall-through used to
         // run unconditionally.
         if (!groupRevealStartedRef.current) {
-          setIdx(firstUnansweredIdx());
+          // Use the freshly-computed `nextResults` (not a memoized helper reading the `results` state, which
+          // closes over the `results` state from before this setResults() call took effect) —
+          // otherwise this looks up "first unanswered stop" against stale data that doesn't yet
+          // include the photo we just submitted, lands back on the same stop we just answered, and
+          // with idx unchanged the screen never advances (and the "位置情報を確認中…" status label,
+          // which only gets cleared by an effect keyed on idx, is left stuck on screen too).
+          const nextIdx = (() => {
+            for (let i = 0; i < stops.length; i++) if (!nextResults.some((r) => r.stopIdx === i)) return i;
+            return 0;
+          })();
+          setIdx(nextIdx);
           setScreen('quiz');
         }
         return null;
@@ -562,7 +567,7 @@ export function useGameEngine() {
         return null;
       }
     },
-    [stops, idx, groupMode, roomCode, destination, playerName, firstUnansweredIdx, stopsCount, playerId, triggerGroupReveal]
+    [stops, idx, groupMode, roomCode, destination, playerName, stopsCount, playerId, triggerGroupReveal]
   );
 
   // Guards against a slow/rare-but-possible GPS resolution racing a later user action for the

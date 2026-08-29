@@ -144,16 +144,10 @@
     font-weight:700;
     font-size:12px;
     letter-spacing:.5em;
-    color:var(--shu);
+    color:#000;
+    -webkit-text-stroke: 3px #fff;
+    paint-order: stroke fill;
     margin:34px 0 22px;
-  }
-  .plaque{
-    background: linear-gradient(135deg, rgba(255,250,235,0.95), rgba(255,214,148,0.9));
-    border: 2px solid rgba(193,50,26,0.85);
-    box-shadow: 0 10px 34px rgba(80,26,10,0.4), inset 0 0 0 3px rgba(255,255,255,0.5);
-    padding:30px 34px 26px;
-    display:inline-block;
-    max-width:92vw;
   }
   .hero-title{
     margin:0;
@@ -166,13 +160,6 @@
     width:min(92vw, 480px);
     height:auto;
     filter: drop-shadow(0 3px 10px rgba(80,26,10,0.35));
-  }
-  .hero-tagline{
-    font-family:var(--serif);
-    font-size:clamp(15px,2.4vw,19px);
-    color:#7a3418;
-    margin:14px 0 0;
-    letter-spacing:.08em;
   }
   .hero-primary-actions{
     display:flex; gap:16px; justify-content:center; width:100%; max-width:520px;
@@ -588,9 +575,6 @@
 
   @media (max-width:480px){
     .reveal-photos .ph{max-width:150px;}
-    /* もとは border-width:22px 26px という桁違いに太い朱色の枠になっていた（タイトル「みちくさ」の
-       周りが不自然に分厚く見える不具合）。デスクトップと同程度の細さに揃え、余白だけ少し詰める。 */
-    .plaque{border-width:2px; padding:22px 20px 20px;}
   }
 
   /* ---------- reveal map ---------- */
