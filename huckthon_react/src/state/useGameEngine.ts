@@ -229,6 +229,21 @@ export function useGameEngine() {
   const groupQuizStartedRef = useRef(false);
   const groupRevealStartedRef = useRef(false);
 
+  // Shared by both the passive Firebase listener (onRevealReady, below) and the explicit
+  // post-submit check in submitPhoto: moves this player on to the reveal screen. Guarded by
+  // groupRevealStartedRef so whichever path notices "everyone's done" first wins.
+  const triggerGroupReveal = useCallback(() => {
+    if (groupRevealStartedRef.current) return;
+    groupRevealStartedRef.current = true;
+    setResults((prev) => {
+      const sorted = [...prev].sort((a, b) => a.stopIdx - b.stopIdx);
+      return sorted;
+    });
+    setRevealIdx(0);
+    setRevealFinal(false);
+    setScreen('reveal');
+  }, []);
+
   useEffect(() => {
     const offUpdate = rt.onRoomUpdate((r) => {
       setRoom(r);
@@ -246,22 +261,12 @@ export function useGameEngine() {
         setScreen('quiz');
       }
     });
-    const offReveal = rt.onRevealReady(() => {
-      if (groupRevealStartedRef.current) return;
-      groupRevealStartedRef.current = true;
-      setResults((prev) => {
-        const sorted = [...prev].sort((a, b) => a.stopIdx - b.stopIdx);
-        return sorted;
-      });
-      setRevealIdx(0);
-      setRevealFinal(false);
-      setScreen('reveal');
-    });
+    const offReveal = rt.onRevealReady(triggerGroupReveal);
     return () => {
       offUpdate();
       offReveal();
     };
-  }, [isHost]);
+  }, [isHost, triggerGroupReveal]);
 
   const openGroupMenu = useCallback(() => {
     setGroupMenuStatus('');
@@ -443,15 +448,12 @@ export function useGameEngine() {
     });
   }, []);
 
-  const submitPhoto = useCallback(
-    async (dataUrl: string): Promise<string | null> => {
+  // Shared by submitPhoto (after a successful GPS fix) and skipGeoAndSubmit (when the player
+  // gives up waiting for one) — everything past "we have a distance" is identical either way.
+  const finalizeAnswer = useCallback(
+    async (dataUrl: string, distance: number, simulated: boolean, shotGeo: LatLng | null): Promise<string | null> => {
       const lm = stops[idx];
       if (!lm) return null;
-      const geoOutcome = await getGeoOrSimulate(lm);
-      if (!geoOutcome.ok) {
-        return geoOutcome.message;
-      }
-      const { distance, simulated, userGeo: shotGeo } = geoOutcome;
       const score = scoreForDistance(distance);
       const newResult: QuizResult = {
         stopIdx: idx,
@@ -478,19 +480,36 @@ export function useGameEngine() {
       if (groupMode && roomCode) {
         const totalScore = nextResults.reduce((s, r) => s + r.score, 0);
         const thumb = (await compressImageDataUrl(dataUrl, 360, 0.65)) || dataUrl;
-        rt
-          .submitAnswerToRoom(roomCode, playerId, playerName, {
-            stopIdx: idx,
-            score,
-            distance,
-            stopName: lm.name,
-            userImgThumb: thumb,
-            targetImg: lm.liveImg,
-            totalScore,
-            answeredCount: nextResults.length,
-            finished: nextResults.length >= stopsCount,
-          })
-          .catch(() => {});
+        const justFinished = nextResults.length >= stopsCount;
+        const submitPromise = rt.submitAnswerToRoom(roomCode, playerId, playerName, {
+          stopIdx: idx,
+          score,
+          distance,
+          stopName: lm.name,
+          userImgThumb: thumb,
+          targetImg: lm.liveImg,
+          totalScore,
+          answeredCount: nextResults.length,
+          finished: justFinished,
+        });
+        if (justFinished) {
+          // This was our last photo. Don't just fire-and-forget and wait on the passive realtime
+          // listener — re-check the room ourselves right away. This matters most when testing/
+          // playing group mode solo (no other players to ever push a further update): the listener
+          // should already catch this, but without this direct check a lone player could be left
+          // stuck on "waiting for everyone" forever since nothing else would nudge the room again.
+          try {
+            await submitPromise;
+            const { room: freshRoom } = await rt.getRoomSnapshot(roomCode);
+            const pids = Object.keys(freshRoom.players);
+            const allFinished = pids.length > 0 && pids.every((pid) => freshRoom.players[pid].finished);
+            if (allFinished) triggerGroupReveal();
+          } catch {
+            /* the realtime listener is still the primary path; this was just a redundant nudge */
+          }
+        } else {
+          submitPromise.catch(() => {});
+        }
         saveHistoryEntry({
           ts: Date.now(),
           mode: 'group',
@@ -536,7 +555,30 @@ export function useGameEngine() {
         return null;
       }
     },
-    [stops, idx, getGeoOrSimulate, groupMode, roomCode, destination, playerName, firstUnansweredIdx, stopsCount, playerId]
+    [stops, idx, groupMode, roomCode, destination, playerName, firstUnansweredIdx, stopsCount, playerId, triggerGroupReveal]
+  );
+
+  const submitPhoto = useCallback(
+    async (dataUrl: string): Promise<string | null> => {
+      const lm = stops[idx];
+      if (!lm) return null;
+      const geoOutcome = await getGeoOrSimulate(lm);
+      if (!geoOutcome.ok) {
+        return geoOutcome.message;
+      }
+      const { distance, simulated, userGeo: shotGeo } = geoOutcome;
+      return finalizeAnswer(dataUrl, distance, simulated, shotGeo);
+    },
+    [stops, idx, getGeoOrSimulate, finalizeAnswer]
+  );
+
+  // Lets the player give up on getting a GPS fix for the current photo and move on anyway,
+  // using a simulated ("experience mode") distance — the escape hatch for when location truly
+  // can't be obtained (permission denied at the OS level, no signal indoors, desktop testing, …)
+  // so a failed fix never leaves them stuck retaking the same photo forever.
+  const skipGeoAndSubmit = useCallback(
+    async (dataUrl: string): Promise<string | null> => finalizeAnswer(dataUrl, simulateDistance(), true, null),
+    [finalizeAnswer]
   );
 
   const advanceReveal = useCallback(() => {
@@ -593,6 +635,7 @@ export function useGameEngine() {
     depart,
     goToSetup,
     submitPhoto,
+    skipGeoAndSubmit,
     advanceReveal,
     replay,
     goHome,

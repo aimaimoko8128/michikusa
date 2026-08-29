@@ -487,6 +487,7 @@
   .status-line{
     text-align:center; margin-top:16px; font-size:13px; color:var(--shu); min-height:18px;
   }
+  .quiz-skip-btn{ display:flex; margin:10px auto 0; }
 
   /* ---------- REVEAL ---------- */
   .reveal-wrap{
@@ -616,7 +617,11 @@
   }
   .map-legend span{display:inline-flex; align-items:center; gap:6px;}
   .map-legend .dot{width:9px; height:9px; border-radius:50%; display:inline-block; border:1.5px solid #fff; box-shadow:0 0 0 1px var(--ink);}
-  .dot-user{background:var(--ink);}
+  /* 現在地は地図上と同じ矢印イラストの縮小版にして、丸(黒)のマーカーと誤認しないようにする */
+  .dot-user{
+    width:13px; height:13px; border-radius:0; border:none; box-shadow:none; background:none;
+    background-image:url('./assets/heading-arrow.png'); background-size:contain; background-repeat:no-repeat; background-position:center;
+  }
   .dot-target{background:var(--shu);}
   .map-legend .dot-origin{width:8px; height:8px; background:var(--bg); border:2px solid var(--ink); box-shadow:none;}
   .map-legend .dot-dest{width:8px; height:8px; background:var(--bg); border:2px solid var(--shu); box-shadow:none;}

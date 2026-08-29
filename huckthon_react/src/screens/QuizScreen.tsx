@@ -4,11 +4,13 @@ import { RouteMap } from '../components/RouteMap';
 import { absoluteImageUrl } from '../lib/api';
 
 export function QuizScreen() {
-  const { stops, idx, setIdx, stopsCount, blackoutByStop, results, isStopAnswered, submitPhoto, groupMode, room, route, routeOrigin, destCoord, userGeo, heading, destination } = useGame();
+  const { stops, idx, setIdx, stopsCount, blackoutByStop, results, isStopAnswered, submitPhoto, skipGeoAndSubmit, groupMode, room, route, routeOrigin, destCoord, userGeo, heading, destination } = useGame();
   const lm = stops[idx];
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [status, setStatus] = useState('');
+  const [skippableDataUrl, setSkippableDataUrl] = useState<string | null>(null);
+  const [skipping, setSkipping] = useState(false);
 
   const veiled = groupMode;
   const blackoutCircles = useMemo(() => blackoutByStop[idx] || [], [blackoutByStop, idx]);
@@ -17,6 +19,8 @@ export function QuizScreen() {
     if (fileInputRef.current) fileInputRef.current.value = '';
     // eslint-disable-next-line react-hooks/set-state-in-effect -- resets local UI state for the newly-shown stop
     setStatus('');
+    setSkippableDataUrl(null);
+    setSkipping(false);
   }, [idx]);
 
   const mineDone = results.length >= stopsCount;
@@ -33,17 +37,30 @@ export function QuizScreen() {
 
   function handleFile(file: File) {
     setStatus('写真を確認中…');
+    setSkippableDataUrl(null);
     const reader = new FileReader();
     reader.onload = () => {
+      const dataUrl = String(reader.result);
       setStatus('位置情報を確認中…');
-      void submitPhoto(String(reader.result)).then((retryMessage) => {
+      void submitPhoto(dataUrl).then((retryMessage) => {
         if (retryMessage) {
           setStatus(retryMessage);
+          setSkippableDataUrl(dataUrl);
           if (fileInputRef.current) fileInputRef.current.value = '';
         }
       });
     };
     reader.readAsDataURL(file);
+  }
+
+  function handleSkip() {
+    if (!skippableDataUrl || skipping) return;
+    setSkipping(true);
+    setStatus('位置情報なしでスキップしています…');
+    void skipGeoAndSubmit(skippableDataUrl).finally(() => {
+      setSkippableDataUrl(null);
+      setSkipping(false);
+    });
   }
 
   const imgSrc = absoluteImageUrl(lm.liveImg);
@@ -134,8 +151,13 @@ export function QuizScreen() {
             }}
           />
         </div>
-        <p className="quiz-note">スマートフォンではカメラが起動します（PCではファイルを選択してください）。</p>
+        <p className="quiz-note">スマートフォンではカメラが起動します。</p>
         <div className="status-line">{status || waitingStatus}</div>
+        {skippableDataUrl && (
+          <button type="button" className="btn ghost small quiz-skip-btn" onClick={handleSkip} disabled={skipping}>
+            {skipping ? 'スキップ中…' : '位置情報なしでスキップして進める'}
+          </button>
+        )}
       </div>
     </section>
   );
