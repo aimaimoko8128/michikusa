@@ -335,9 +335,16 @@
   /* ---------- HISTORY (記録) ---------- */
   .history-list{display:flex; flex-direction:column; gap:10px; margin-top:8px; max-height:420px; overflow-y:auto;}
   .history-row{
-    display:flex; align-items:center; gap:10px; padding:10px;
+    display:flex; align-items:center; gap:2px; padding:4px;
     border:1px solid var(--ink-faint); background:var(--bg-2);
   }
+  .history-row-main{
+    appearance:none; border:none; background:transparent; padding:6px; margin:0;
+    display:flex; align-items:center; gap:10px; flex:1; min-width:0;
+    font:inherit; text-align:left; color:inherit; cursor:pointer;
+    transition:background .12s ease;
+  }
+  .history-row-main:hover{background:rgba(193,50,26,0.08);}
   .history-row .h-imgs{display:flex; gap:4px; flex-shrink:0;}
   .history-row .h-imgs img{width:44px; height:44px; object-fit:cover; border:1px solid var(--ink); display:block;}
   .history-row .h-info{flex:1; min-width:0;}
@@ -345,6 +352,39 @@
   .history-row .h-meta{font-family:var(--label); font-size:10.5px; color:var(--ink-faint); margin-top:2px;}
   .history-row .h-score{font-family:var(--serif); font-weight:700; font-size:17px; color:var(--shu); flex-shrink:0; font-variant-numeric:tabular-nums;}
   .history-empty{font-size:12.5px; color:var(--ink-faint); padding:10px 2px;}
+
+  /* 記録タップ時に開く、自分の写真とお題の写真を上下に見比べる拡大表示 */
+  .history-lightbox-overlay{
+    position:fixed; inset:0; background:rgba(21,19,15,0.72); z-index:200;
+    display:flex; align-items:center; justify-content:center; padding:20px;
+    animation:fadeIn .15s ease;
+  }
+  @keyframes fadeIn{ from{opacity:0;} to{opacity:1;} }
+  .history-lightbox{
+    background:var(--panel); border:1.5px solid var(--ink); border-radius:var(--radius);
+    box-shadow:var(--shadow); padding:22px 20px 24px; max-width:420px; width:100%;
+    max-height:88vh; overflow-y:auto; text-align:center; position:relative;
+  }
+  .history-lightbox-close{
+    position:absolute; top:10px; right:10px; width:30px; height:30px; border-radius:50%;
+    appearance:none; border:1.5px solid var(--ink-faint); background:var(--bg);
+    color:var(--ink-dim); font-size:16px; line-height:1; cursor:pointer; padding:0;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .history-lightbox-close:hover{ background:var(--shu); color:#fff; border-color:var(--shu); }
+  .history-lightbox-name{font-family:var(--serif); font-weight:700; font-size:17px; color:var(--ink); margin:2px 30px 2px 0;}
+  .history-lightbox-meta{font-family:var(--label); font-size:11px; color:var(--ink-faint); margin-bottom:16px;}
+  .history-lightbox-photos{display:flex; flex-direction:column; gap:14px; align-items:center;}
+  .history-lightbox-photo{width:100%; max-width:280px;}
+  .history-lightbox-photo img{
+    width:100%; aspect-ratio:4/3; object-fit:cover; display:block;
+    border:1.5px solid var(--ink); box-shadow:var(--shadow);
+  }
+  .history-lightbox-photo .lbl{font-family:var(--label); font-size:11px; color:var(--ink-faint); margin-top:6px;}
+  .history-lightbox-score{
+    margin-top:18px; font-family:var(--label); font-size:13px; color:var(--ink);
+  }
+  .history-lightbox-score b{font-family:var(--serif); font-size:20px; color:var(--shu);}
   .room-history-picker{display:flex; flex-wrap:wrap; gap:8px; margin:8px 0;}
   .room-history-chip{
     display:inline-flex; align-items:center; gap:4px;
@@ -549,7 +589,9 @@
 
   @media (max-width:480px){
     .reveal-photos .ph{max-width:150px;}
-    .plaque{border-width:22px 26px;}
+    /* もとは border-width:22px 26px という桁違いに太い朱色の枠になっていた（タイトル「みちくさ」の
+       周りが不自然に分厚く見える不具合）。デスクトップと同程度の細さに揃え、余白だけ少し詰める。 */
+    .plaque{border-width:2px; padding:22px 20px 20px;}
   }
 
   /* ---------- reveal map ---------- */
@@ -558,19 +600,15 @@
     width:100%; height:220px; border:1.5px solid var(--ink); background:var(--bg-2);
   }
   .reveal-map .leaflet-control-attribution{font-size:9px;}
-  /* 現在地マーカーの上に重ねる、向いている方向を示す矢印（コンパス対応端末のみ表示） */
+  /* 現在地マーカー: 向いている方向がわかるときは矢印イラスト（上向き=北の画像を回転して表示）、
+     わからないときは丸い点（RouteMap.tsx側で切り替え） */
   .heading-arrow-icon{ background:transparent; border:none; }
-  .heading-arrow{
+  .heading-arrow-img{
     width:34px; height:34px;
-    display:flex; align-items:flex-start; justify-content:center;
+    background-size:contain; background-repeat:no-repeat; background-position:center;
     transform-origin:50% 50%;
     pointer-events:none;
-  }
-  .heading-arrow::before{
-    content:''; width:0; height:0; margin-top:1px;
-    border-left:7px solid transparent; border-right:7px solid transparent;
-    border-bottom:14px solid var(--shu);
-    filter:drop-shadow(0 1px 2px rgba(21,19,15,0.5));
+    filter:drop-shadow(0 1px 3px rgba(21,19,15,0.5));
   }
   .map-legend{
     display:flex; gap:18px; justify-content:center; flex-wrap:wrap;
