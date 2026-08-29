@@ -154,7 +154,10 @@
     color:#000;
     -webkit-text-stroke: 3px #fff;
     paint-order: stroke fill;
-    margin:0 0 22px;
+    /* The title image already carries a bit of built-in top padding (from the transparent-crop
+       margin baked into title.png), so a small bottom margin here is enough — 22px on top of
+       that looked like a big gap between the label and WalkGuessr. */
+    margin:0 0 6px;
   }
   .hero-title{
     margin:0;
