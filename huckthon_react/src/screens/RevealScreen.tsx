@@ -43,6 +43,13 @@ export function RevealScreen() {
   const shownScoreRef = useRef(0);
   const cancelAnimRef = useRef<(() => void) | null>(null);
 
+  // Each new answer reveal (and the final summary) starts scrolled to the top — otherwise the
+  // player can land mid-page still scrolled from wherever they were on the quiz screen, or from
+  // the previous result, and miss the score/photo comparison at the top.
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [revealIdx, revealFinal]);
+
   useEffect(() => {
     if (revealFinal || !r) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- (re)starts the judging/score-count animation for the newly-shown result

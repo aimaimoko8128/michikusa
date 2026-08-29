@@ -71,7 +71,7 @@ export function HeroScreen() {
           <button className="btn hero-primary-btn" onClick={goToSetup}>
             はじめる
           </button>
-          <button className="btn ghost hero-primary-btn" type="button" onClick={openGroupMenu}>
+          <button className="btn hero-primary-btn" type="button" onClick={openGroupMenu}>
             グループで対戦
           </button>
         </div>

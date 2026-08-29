@@ -56,11 +56,14 @@ export function RouteMap({ origin, originKnown, dest, route, heading, onMapClick
     const layers = layersRef.current;
 
     if (layers.destMarker) map.removeLayer(layers.destMarker);
+    // Cream fill / red outline — matches the reveal-screen results map's own 目的地 marker (and
+    // its legend), which previously used the opposite fill/outline combo here, making the two
+    // maps' destination pins look like different things.
     layers.destMarker = L.circleMarker([dest.lat, dest.lng], {
       radius: 9,
-      color: '#faf9f6',
+      color: '#c1321a',
       weight: 2,
-      fillColor: '#c1321a',
+      fillColor: '#faf9f6',
       fillOpacity: 1,
     })
       .addTo(map)
@@ -120,11 +123,13 @@ export function RouteMap({ origin, originKnown, dest, route, heading, onMapClick
       }
     } else {
       if (!positionMarkerRef.current) {
+        // Cream fill / black outline — matches the reveal-screen results map's スタート地点
+        // marker (and its legend); previously this used the opposite fill/outline combo.
         positionMarkerRef.current = L.circleMarker([origin.lat, origin.lng], {
           radius: 9,
-          color: '#faf9f6',
+          color: '#15130f',
           weight: 2,
-          fillColor: '#15130f',
+          fillColor: '#faf9f6',
           fillOpacity: 1,
         })
           .addTo(map)

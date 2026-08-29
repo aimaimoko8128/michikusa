@@ -446,10 +446,16 @@ export function useGameEngine() {
   // Shared by submitPhoto (after a successful GPS fix) and skipGeoAndSubmit (when the player
   // gives up waiting for one) — everything past "we have a distance" is identical either way.
   const finalizeAnswer = useCallback(
-    async (dataUrl: string, distance: number, simulated: boolean, shotGeo: LatLng | null): Promise<string | null> => {
+    async (
+      dataUrl: string,
+      distance: number,
+      simulated: boolean,
+      shotGeo: LatLng | null,
+      scoreOverride?: number
+    ): Promise<string | null> => {
       const lm = stops[idx];
       if (!lm) return null;
-      const score = scoreForDistance(distance);
+      const score = scoreOverride ?? scoreForDistance(distance);
       const newResult: QuizResult = {
         stopIdx: idx,
         key: lm.key,
@@ -602,7 +608,12 @@ export function useGameEngine() {
   const skipGeoAndSubmit = useCallback(
     async (dataUrl: string): Promise<string | null> => {
       submissionTokenRef.current++; // invalidate any still-pending submitPhoto() for this photo
-      return finalizeAnswer(dataUrl, simulateDistance(), true, null);
+      // Explicitly giving up on GPS and skipping is worth 0 points — unlike the "device has no
+      // geolocation support at all" experience-mode fallback (which still scores a simulated
+      // distance), this is the player choosing not to verify their location, so it shouldn't be
+      // possible to luck into a high score. The distance is still simulated purely for the
+      // "体験モード" flavor text/estimate shown on the reveal screen.
+      return finalizeAnswer(dataUrl, simulateDistance(), true, null, 0);
     },
     [finalizeAnswer]
   );
