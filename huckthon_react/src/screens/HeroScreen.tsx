@@ -63,9 +63,9 @@ export function HeroScreen() {
     <section className="screen active" id="screen-hero">
       <SakuraPetals />
       <div className="hero-content">
-        <div className="hero-mark">京都リアルワールド探索ゲーム</div>
+        <div className="hero-mark">リアルワールド探索ゲーム</div>
         <h1 className="hero-title">
-          <img src={titleImg} alt="KyotoGuessr" className="hero-title-img" />
+          <img src={titleImg} alt="WalkGuessr" className="hero-title-img" />
         </h1>
         <div className="hero-primary-actions">
           <button className="btn hero-primary-btn" onClick={goToSetup}>
@@ -97,7 +97,7 @@ export function HeroScreen() {
           記録
         </button>
       </div>
-      <div className="hero-foot">KyotoGuessr — 着くまでが、ゲーム。</div>
+      <div className="hero-foot">WalkGuessr — 着くまでが、ゲーム。</div>
     </section>
   );
 }
